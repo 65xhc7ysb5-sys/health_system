@@ -1,0 +1,15 @@
+# --- [HX Health System] Sensitive Data & DB ---
+hx_health.db
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Apple Health Raw Data (향후 파싱할 매우 민감한 데이터) ---
+export.xml
+apple_health_export/
+*.zip
+
+# --- Python Virtual Environment & Cache ---
+.venv/
+__pycache__/
+*.pyc
