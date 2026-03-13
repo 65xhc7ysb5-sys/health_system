@@ -21,14 +21,16 @@ def load_data():
 df = load_data()
 
 if not df.empty:
+    
     # ==========================================
     # 🗓️ 2. 기간 필터링 UI
     # ==========================================
     st.write("🗓 **데이터 조회 기간 설정**")
     
+    # [수정됨] "어제" 옵션 추가
     filter_option = st.selectbox(
         "분석할 기간을 선택하세요:",
-        ["전체 기간", "오늘", "지난 7일", "지난 30일", "지난 분기 (90일)", "지난 해 (365일)", "커스텀 기간 선택"],
+        ["오늘", "어제", "지난 7일", "지난 30일", "지난 분기 (90일)", "지난 해 (365일)", "커스텀 기간 선택"],
         label_visibility="collapsed"
     )
     
@@ -36,7 +38,11 @@ if not df.empty:
     start_date = today
     end_date = today
 
-    if filter_option == "오늘": start_date = today
+    if filter_option == "오늘": 
+        start_date = today
+    elif filter_option == "어제": # [수정됨] 어제 날짜 계산 로직 추가
+        start_date = today - timedelta(days=1)
+        end_date = today - timedelta(days=1)
     elif filter_option == "지난 7일": start_date = today - timedelta(days=7)
     elif filter_option == "지난 30일": start_date = today - timedelta(days=30)
     elif filter_option == "지난 분기 (90일)": start_date = today - timedelta(days=90)
@@ -58,6 +64,76 @@ if not df.empty:
     # 🚀 3. 대시보드 렌더링 시작
     # ==========================================
     if not filtered_df.empty:
+        
+        # ---------------------------------------------------------
+        # 🚨 Tactical Health Status (염증 신호등 & 간 회복 목표)
+        # ---------------------------------------------------------
+        st.markdown("### 🚨 Tactical Health Status")
+        
+        # [Hotfix] 안전한 평균 계산 함수 (NaN 방어)
+        def get_safe_mean(series):
+            val = pd.to_numeric(series, errors='coerce').mean()
+            return 0.0 if pd.isna(val) else val
+
+        # 1. 염증 조기 경보 - 선택된 기간의 '일평균' 데이터
+        avg_b = get_safe_mean(filtered_df.get('bloating_b', pd.Series(dtype=float)))
+        avg_a = get_safe_mean(filtered_df.get('acid_a', pd.Series(dtype=float)))
+        avg_c = get_safe_mean(filtered_df.get('cough_c', pd.Series(dtype=float)))
+        avg_upf = get_safe_mean(filtered_df.get('upf_count', pd.Series(dtype=float)))
+        
+        avg_bac_score = avg_b + avg_a + avg_c
+        
+        # 신호등 로직 판별
+        if avg_bac_score > 5 or avg_upf >= 2:
+            st.error(f"**🔴 위험 (염증 경보)** : 선택 기간 일평균 B-A-C 총점 {avg_bac_score:.1f}점, UPF {avg_upf:.1f}회\n\n내장지방 염증 수치가 높습니다. **즉시 식단 락다운 및 휴식을 취하세요!**")
+        elif avg_bac_score > 2 or avg_upf >= 1:
+            st.warning(f"**🟡 주의 (식단 관리)** : 선택 기간 일평균 B-A-C 총점 {avg_bac_score:.1f}점, UPF {avg_upf:.1f}회\n\n약간의 역류 증상 또는 초가공식품 섭취가 감지되었습니다. 오늘 저녁은 가볍게 드세요.")
+        else:
+            st.success(f"**🟢 양호 (간 회복 중)** : 선택 기간 일평균 B-A-C 총점 {avg_bac_score:.1f}점, UPF {avg_upf:.1f}회\n\n염증 유발 요인이 완벽히 통제되고 있습니다. 간이 안정적으로 회복되는 중입니다!")
+            
+        # 2. 간 회복 버다운 (Liver Recovery Burndown) UI
+        col_tg, col_alt = st.columns(2)
+        with col_tg:
+            st.metric(label="🩸 중성지방 (TG) 목표", value="260 mg/dL", delta="-110 to Target (목표: 150미만)", delta_color="inverse")
+        with col_alt:
+            st.metric(label="🧪 간수치 (ALT) 목표", value="52 U/L", delta="-12 to Target (목표: 40미만)", delta_color="inverse")
+            
+        st.divider()
+        
+        # ---------------------------------------------------------
+        # 🔥 Zone 2 지방 연소 가이드 (간 해독 엔진)
+        # ---------------------------------------------------------
+        st.markdown("### 🔥 간 해독 엔진 (Zone 2 지방 연소)")
+        
+        # exercise_min을 Zone 2(지방 연소) 시간으로 활용 (NaN 방어)
+        avg_exercise = get_safe_mean(filtered_df.get('exercise_min', pd.Series(dtype=float)))
+        
+        # 목표: 하루 45분
+        zone2_goal = 45.0
+        progress_pct = min(avg_exercise / zone2_goal, 1.0) # 최대 100%까지만
+        progress_pct = max(progress_pct, 0.0) # 혹시 모를 음수값 방어
+        
+        col_fire, col_text = st.columns([1, 2])
+        with col_fire:
+            st.metric(
+                label="🏃 평균 지방 연소 시간", 
+                value=f"{avg_exercise:.0f} 분", 
+                delta=f"목표치(45분) 대비 {avg_exercise - zone2_goal:.0f}분",
+                delta_color="normal" if avg_exercise >= zone2_goal else "inverse"
+            )
+            
+        with col_text:
+            st.progress(progress_pct)
+            if avg_exercise >= zone2_goal:
+                st.success("🎉 **엔진 풀가동!** 충분한 중강도 활동으로 간에 쌓인 지방을 효과적으로 태웠습니다.")
+            elif avg_exercise >= 20:
+                st.info("🔥 **연소 시작!** 엔진이 예열되었습니다. 하루 45분을 채우면 내장지방이 타기 시작합니다.")
+            else:
+                st.warning("🔋 **엔진 정지** 간 해독을 위해 약간 숨이 찰 정도(Zone 2)의 걷기가 필요합니다.")
+                
+        st.divider()
+        # ---------------------------------------------------------
+
         # 마음 상태 매핑 (텍스트 -> 숫자)
         mood_mapping = {"매우불쾌": 1, "불쾌": 2, "약간불쾌": 3, "보통": 4, "약간즐거움": 5, "즐거움": 6, "매우즐거움": 7}
         reverse_mood = {1: "매우불쾌 🤬", 2: "불쾌 😠", 3: "약간불쾌 😕", 4: "보통 😐", 5: "약간즐거움 🙂", 6: "즐거움 😄", 7: "매우즐거움 🤩"}
