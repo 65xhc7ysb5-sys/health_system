@@ -19,3 +19,6 @@ data/
 export.xml
 apple_health_export/
 *.zip
+
+# --- Streamlit Secrets ---
+.streamlit/
