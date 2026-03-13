@@ -13,3 +13,9 @@ apple_health_export/
 .venv/
 __pycache__/
 *.pyc
+
+# --- Apple Health Raw Data (향후 파싱할 매우 민감한 데이터) ---
+data/
+export.xml
+apple_health_export/
+*.zip
